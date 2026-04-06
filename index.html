@@ -1,79 +1,118 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Quản lý sản phẩm</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
-    table { width: 100%; border-collapse: collapse; background: #fff; margin: 15px 0; }
-    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
-    th { background: #007bff; color: #fff; cursor: pointer; user-select: none; }
-    tbody tr:nth-child(odd) { background: #f8f9fa; }
-    tbody tr:hover { background: #e9ecef; }
-    .form-group { display: flex; gap: 8px; flex-wrap: wrap; margin: 15px 0; }
-    input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; min-width: 120px; }
-    button { padding: 8px 16px; background: #28a745; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
-    button:hover { background: #218838; }
-  </style>
+    <meta charset="UTF-8"> //Khai báo bộ mã ký tự
+    <title>Quản lý sản phẩm</title>
 </head>
 <body>
 
 <h2>Danh sách sản phẩm</h2>
+
 <table id="product-table">
-  <thead>
-    <tr>
-      <th>STT</th>
-      <th id="sort-name">Tên sản phẩm ▲</th>
-      <th>Danh mục</th>
-      <th>Đơn giá</th>
-      <th>Số lượng</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
+    <thead>
+        <tr>
+            <th>STT</th>
+            <th id="sort-name">Tên sản phẩm ▲▼</th>
+            <th>Danh mục</th>
+            <th>Đơn giá</th>
+            <th>Số lượng</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
 </table>
 
 <h2>Thêm sản phẩm</h2>
+
 <div class="form-group">
-  <input id="input-name" placeholder="Tên sản phẩm (≥3 ký tự)">
-  <input id="input-category" placeholder="Danh mục">
-  <input id="input-price" type="number" placeholder="Đơn giá (>0)">
-  <input id="input-quantity" type="number" placeholder="Số lượng (≥1)">
-  <button id="btn-add">Thêm</button>
+    <input id="input-name" placeholder="Tên sản phẩm">
+    <input id="input-category" placeholder="Danh mục">
+    <input id="input-price" type="number" placeholder="Đơn giá">
+    <input id="input-quantity" type="number" placeholder="Số lượng">
+    <button id="btn-add">Thêm</button>
 </div>
 
 <script>
-  const $ = id => document.getElementById(id);
-  let products = [], asc = true;
+    let products = [];
+    let isAscending = true;
 
-  function render(list) {
-    $('product-table').querySelector('tbody').innerHTML = 
-      list.map((p, i) => `<tr><td>${i+1}</td><td>${p.name}</td><td>${p.category||''}</td><td>${p.price.toLocaleString('vi-VN')}</td><td>${p.quantity}</td></tr>`).join('');
-  }
+    const tbody = document.querySelector("#product-table tbody");
+    const sortBtn = document.getElementById("sort-name");
 
-  // Load AJAX
-  const xhr = new XMLHttpRequest();
-  xhr.onload = () => { if(xhr.status===200) { products = JSON.parse(xhr.responseText); render(products); } };
-  xhr.open('GET', 'products.json'); xhr.send();
+    function renderTable(data) {
+        tbody.innerHTML = "";
+        data.forEach((p, index) => {
+            const row = `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${p.name}</td>
+                    <td>${p.category || ""}</td>
+                    <td>${p.price}</td>
+                    <td>${p.quantity}</td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+    }
 
-  // Sort by name
-  $('sort-name').onclick = () => {
-    products.sort((a,b) => asc ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name));
-    asc = !asc; $('sort-name').textContent = 'Tên sản phẩm ' + (asc?'▲':'▼'); render(products);
-  };
+    const xhr = new XMLHttpRequest();
+    xhr.onreadystatechange = function() {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+            products = JSON.parse(xhr.responseText);
+            renderTable(products);
+        }
+    };
+    xhr.open('GET', 'products.json');
+    xhr.send();
 
-  // Add product
-  $('btn-add').onclick = () => {
-    const name = $('input-name').value.trim(), cat = $('input-category').value.trim(),
-          price = +$('input-price').value, qty = +$('input-quantity').value;
-    
-    if(name.length < 3) return alert('Tên ≥ 3 ký tự');
-    if(price <= 0) return alert('Đơn giá > 0');
-    if(!Number.isInteger(qty) || qty < 1) return alert('Số lượng ≥ 1');
+    sortBtn.addEventListener("click", function() {
+        products.sort((a, b) => {
+            if (a.name.toLowerCase() < b.name.toLowerCase()) return isAscending ? -1 : 1;
+            if (a.name.toLowerCase() > b.name.toLowerCase()) return isAscending ? 1 : -1;
+            return 0;
+        });
 
-    products.push({ id: products.length+1, name, category: cat, price, quantity: qty });
-    render(products);
-    ['input-name','input-category','input-price','input-quantity'].forEach(id => $(id).value = '');
-  };
+        isAscending = !isAscending;
+        sortBtn.innerText = "Tên sản phẩm " + (isAscending ? "▲" : "▼");
+
+        renderTable(products);
+    });
+
+    document.getElementById("btn-add").addEventListener("click", function() {
+        const name = document.getElementById("input-name").value.trim();
+        const category = document.getElementById("input-category").value.trim();
+        const price = Number(document.getElementById("input-price").value);
+        const quantity = Number(document.getElementById("input-quantity").value);
+
+        if (name.length < 3) {
+            alert("Tên sản phẩm phải >= 3 ký tự");
+            return;
+        }
+        if (price <= 0) {
+            alert("Đơn giá phải > 0");
+            return;
+        }
+        if (!Number.isInteger(quantity) || quantity < 1) {
+alert("Số lượng phải >= 1");
+            return;
+        }
+
+        const newProduct = {
+            id: products.length + 1,
+            name,
+            category,
+            price,
+            quantity
+        };
+
+        products.push(newProduct);
+        renderTable(products);
+
+        document.getElementById("input-name").value = "";
+        document.getElementById("input-category").value = "";
+        document.getElementById("input-price").value = "";
+        document.getElementById("input-quantity").value = "";
+    });
 </script>
 
 </body>
